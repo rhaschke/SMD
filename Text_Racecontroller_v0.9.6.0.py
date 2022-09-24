@@ -7,8 +7,6 @@ from datetime import datetime
 import struct
 import can
 import os, sys
-import binascii
-from struct import unpack
 from threading import Thread, Event
 import tkinter as tk
 import tkinter.font
