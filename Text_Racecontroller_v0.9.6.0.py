@@ -28,10 +28,12 @@ class input_race_GUI(Thread):
 
     def run(self):
         global raceNumber
+        global raceFinished
         global PointsTeam1
         global PointsTeam2
         global PointsTeam3
         raceNumber = 0
+        raceFinished = False
         PointsTeam1 = 0
         PointsTeam2 = 0
         PointsTeam3 = 0
@@ -638,7 +640,9 @@ class input_race_GUI(Thread):
         global textToSendBack
         global canIdText
         global TimeRace
+        global raceFinished
 
+        raceFinished = False
         TimeRace = 1
         self.txtRound1["fg"] = "red"
         self.txtRound2["fg"] = "black"
@@ -690,6 +694,9 @@ class input_race_GUI(Thread):
         global canIdText
         global TimeRace
         global blockClock2
+        global raceFinished
+
+        raceFinished = False
         TimeRace = 2
         self.txtRound1["fg"] = "black"
         self.txtRound2["fg"] = "red"
@@ -742,6 +749,9 @@ class input_race_GUI(Thread):
         global textToSendBack
         global canIdText
         global TimeRace
+        global raceFinished
+
+        raceFinished = False
         TimeRace = 3
         #        self.txtRace1["fg"] = "black"
         self.txtRound1["fg"] = "black"
@@ -965,8 +975,8 @@ class input_race_GUI(Thread):
         label()
 
     def apply_data(self):
-
         global raceNumber
+
         now = datetime.now()
         connection = sqlite3.connect(databaseName)
         connection.execute(
@@ -1016,6 +1026,18 @@ class input_race_GUI(Thread):
         self.event_1.clear()
 
 
+def set_points(team, points):
+    global PointsTeam1
+    global PointsTeam2
+    global PointsTeam3
+    if team == 0:
+        PointsTeam1 = points
+    elif team == 1:
+        PointsTeam2 = points
+    elif team == 2:
+        PointsTeam3 = points
+
+
 class calculate_time_Points(Thread):
     def __init__(self, running):
         Thread.__init__(self)
@@ -1025,6 +1047,7 @@ class calculate_time_Points(Thread):
         global bestTimeTeam1
         global bestTimeTeam2
         global bestTimeTeam3
+        global raceFinished
         bestTimeTeam1 = 0
         bestTimeTeam2 = 0
         bestTimeTeam3 = 0
@@ -1068,6 +1091,20 @@ class calculate_time_Points(Thread):
             if Timer3_3 > 0:
                 if Timer3_3 < bestTimeTeam1:
                     bestTimeTeam1 = Timer3_3
+
+            if not raceFinished:
+                race_times = [
+                    [Timer1_1, Timer2_1, Timer3_1],
+                    [Timer1_2, Timer2_2, Timer3_2],
+                    [Timer1_3, Timer2_3, Timer3_3],
+                ][TimeRace - 1]
+                if all([t > 0 for t in race_times]):
+                    raceFinished = True
+                    current_points = [PointsTeam1, PointsTeam2, PointsTeam3]
+                    sorted = list(enumerate(race_times))
+                    sorted.sort(key=lambda pair: pair[1], reverse=True)
+                    for p, (team, _) in enumerate(sorted):
+                        set_points(team, current_points[team] + p + 1)
 
     def stop(self):
         self._is_running = False
