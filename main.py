@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, uic, QtCore
 from typing import List
+from communication import CanBusComm, DummyComm
 import sys
 
 
@@ -59,6 +60,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         uic.loadUi("main.ui", self)  # load .ui file
+
+        try:
+            self.track = CanBusComm()
+        except Exception as e:
+            print("Failed to initialize can bus: ", e)
+            self.track = DummyComm()
 
         self.race = Race(self.gridLayout)
         self.race.setTeamNames(["1", "2", "3"])
