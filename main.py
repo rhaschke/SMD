@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, uic, QtCore
+from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from typing import List
 import sys
 
@@ -21,7 +21,7 @@ class DataWidget(QtWidgets.QWidget):
         self.doubleSpinBox_time.setValue(time)
 
     def reset(self):
-        self.name.setCurrentText("")
+        self.name.setCurrentIndex(-1)
         self.time.setValue(0)
         self.invalid.setChecked(False)
 
@@ -51,7 +51,15 @@ class RunRow(QtCore.QObject):
     def anyTeamChanged(self, col: int, team: str):
         for w in self.widgets:
             if w.column != col and team != "" and w.name.currentText() == team:
-                w.name.setCurrentText("")
+                w.name.setCurrentIndex(-1)
+
+
+class TeamCompleter(QtWidgets.QCompleter):
+    def __init__(self, teams: QtCore.QStringListModel):
+        self.teams = teams
+
+    def update(self, word: str):
+        pass
 
 
 class Race:
@@ -62,8 +70,33 @@ class Race:
             w.doubleClicked.connect(lambda: print("doubleClicked"))
 
     def setTeamNames(self, names: List[str]):
-        names.append("")
         self.teams.setStringList(names)
+
+
+class TeamBox(QtWidgets.QComboBox):
+    teamChanged = QtCore.pyqtSignal(int, str)
+
+    def __init__(self, col: int, model: QtCore.QStringListModel):
+        super().__init__()
+        self.col = col
+        self.model = model
+        self.setModel(model)
+        self.setEditable(True)
+        font = QtGui.QFont()
+        font.setPointSize(16)
+        self.setFont(font)
+        self.setCurrentIndex(-1)
+        completer = self.completer()
+        completer.setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
+        completer.setFilterMode(QtCore.Qt.MatchContains)
+        completer.setModel(model)
+
+        self.currentTextChanged.connect(self._onChange)
+
+    def _onChange(self, text: str):
+
+        # TODO: validate
+        self.teamChanged.emit(self.col, self.currentText())
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -74,27 +107,32 @@ class MainWindow(QtWidgets.QMainWindow):
         self.race = Race(self.gridLayout)
         self.race.setTeamNames(["1", "2", "3"])
 
+        # racing_class (TODO: From Database)
+        self.race_class.addItems(["UA", "UB", "AZ", "SE"])
+        self.race_class.currentTextChanged.connect(self.onRaceClassChanged)
+
         # teammodel
-        tmp_participants = ["UA " + str(i) for i in range(25)]
-        tmp_participants.append("")
-        self.teamModel = QtCore.QStringListModel(tmp_participants)
+        self.teamModel = QtCore.QStringListModel()
 
-        self.teams = [self.team1, self.team2, self.team3]
-        for i, team in enumerate(self.teams):
-            team.setModel(self.teamModel)
-            team.setCurrentText("")
+        self.onRaceClassChanged("UA")
+        # self
+        self.teams = [TeamBox(i, self.teamModel) for i in range(3)]
+        for t in self.teams:
+            t.teamChanged.connect(self.anyTeamChanged)
+            self.gridLayout.addWidget(t, 4, 1 + t.col, 1, 1)
 
-        # do not put in loop! lambda can't work with changing i...
-        self.teams[0].currentTextChanged.connect(lambda text: self.anyTeamChanged(0, text))
-        self.teams[1].currentTextChanged.connect(lambda text: self.anyTeamChanged(1, text))
-        self.teams[2].currentTextChanged.connect(lambda text: self.anyTeamChanged(2, text))
+        # ensure that one team can only be in one slot at the time
 
     def anyTeamChanged(self, col: int, team: str):
         for i, t in enumerate(self.teams):
             if i != col and team != "" and t.currentText() == team:
                 t.setCurrentText("")
-                print("change ", i, col, team)
         self.race.setTeamNames(list(set([t.currentText() for t in self.teams])))
+
+    def onRaceClassChanged(self, race_class: str):
+        tmp_participants = [race_class + " " + str(i) for i in range(25)]
+        tmp_participants.append("")
+        self.teamModel.setStringList(tmp_participants)
 
 
 if __name__ == "__main__":
