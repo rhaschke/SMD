@@ -74,6 +74,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.race = Race(self.gridLayout)
         self.race.setTeamNames(["1", "2", "3"])
 
+        # teammodel
+        tmp_participants = ["UA " + str(i) for i in range(25)]
+        tmp_participants.append("")
+        self.teamModel = QtCore.QStringListModel(tmp_participants)
+
+        self.teams = [self.team1, self.team2, self.team3]
+        for i, team in enumerate(self.teams):
+            team.setModel(self.teamModel)
+            team.setCurrentText("")
+
+        # do not put in loop! lambda can't work with changing i...
+        self.teams[0].currentTextChanged.connect(lambda text: self.anyTeamChanged(0, text))
+        self.teams[1].currentTextChanged.connect(lambda text: self.anyTeamChanged(1, text))
+        self.teams[2].currentTextChanged.connect(lambda text: self.anyTeamChanged(2, text))
+
+    def anyTeamChanged(self, col: int, team: str):
+        for i, t in enumerate(self.teams):
+            if i != col and team != "" and t.currentText() == team:
+                t.setCurrentText("")
+                print("change ", i, col, team)
+        self.race.setTeamNames(list(set([t.currentText() for t in self.teams])))
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
