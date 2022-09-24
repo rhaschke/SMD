@@ -1788,12 +1788,29 @@ def main():
     calc_race_data.join()
 
 
+class DummyCanMsg:
+    arbitration_id = 0
+
+
+class DummyCanBus:
+    def send(self, msg):
+        pass
+
+    def recv(self):
+        time.sleep(0.1)
+        return DummyCanMsg()
+
+
 if __name__ == "__main__":
     # Set I2C Bus 1
     # i2c_bus = SMBus(1)
 
     # Set CAN Bus 0
-    can_bus = can.interface.Bus(bustype="socketcan", channel="can0", bitrate=1000000)
+    try:
+        can_bus = can.interface.Bus(bustype="socketcan", channel="can0", bitrate=1000000)
+    except Exception as e:
+        print("Failed to initialize can bus: ", e)
+        can_bus = DummyCanBus()
     # reset_msg = can.Message(arbitration_id=0x003, data=[0, 0, 0, 0, 0, 0], is_extended_id=False)
     # can.set_filter[{"can_id": 0x1FFA2000, "can_mask": 0x1FFFFFFF, "extended": True}]
     running = True
