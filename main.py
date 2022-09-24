@@ -5,12 +5,17 @@ import sys
 
 class DataWidget(QtWidgets.QWidget):
     doubleClicked = QtCore.pyqtSignal()
+    teamChanged = QtCore.pyqtSignal(int, str)  # pass column and new team
 
     def __init__(self, column: int, teams: QtCore.QStringListModel) -> None:
         super().__init__()
         uic.loadUi("data.ui", self)
         self.column = column
         self.name.setModel(teams)
+
+        self.name.currentTextChanged.connect(
+            lambda: self.teamChanged.emit(self.column, self.name.currentText())
+        )
 
     def setTime(self, time: float):
         self.doubleSpinBox_time.setValue(time)
@@ -41,6 +46,12 @@ class RunRow(QtCore.QObject):
         for c, w in enumerate(self.widgets):
             grid.addWidget(w, row, col + c)
             w.doubleClicked.connect(self.doubleClicked)
+            w.teamChanged.connect(self.anyTeamChanged)
+
+    def anyTeamChanged(self, col: int, team: str):
+        for w in self.widgets:
+            if w.column != col and team != "" and w.name.currentText() == team:
+                w.name.setCurrentText("")
 
 
 class Race:
