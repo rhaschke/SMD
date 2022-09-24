@@ -1500,7 +1500,7 @@ class can_recvData(Thread):
                 # print (msg.data[0])
                 traknum = msg.data[0]
                 reciveTime = msg.data[1:]  # [-4:]
-                (raceTime,) = unpack(">i", reciveTime)
+                (raceTime,) = struct.unpack(">i", reciveTime)
                 raceTime = raceTime / 1000
 
                 if TimeRace == 1:
@@ -1778,7 +1778,12 @@ def main():
 
 
 class DummyCanMsg:
-    arbitration_id = 0
+    def __init__(self, track, t):
+        self.arbitration_id = 0x1FFA2000
+        self.data = struct.pack(">ci", bytes([track]), int(t * 1000))
+
+
+dummy_track_order = None
 
 
 class DummyCanBus:
@@ -1786,8 +1791,40 @@ class DummyCanBus:
         pass
 
     def recv(self):
-        time.sleep(0.1)
-        return DummyCanMsg()
+        import random
+
+        global TimeRace
+        global dummy_start_time
+        global dummy_track_order
+        global dummy_next_race
+
+        if dummy_track_order is None:  # initialize new race
+            if TimeRace == 0 or dummy_next_race > 3:  # first init or start over
+                dummy_next_race = 1
+
+        if TimeRace == dummy_next_race:  # TimeRace increased, new race started
+            print("--------------------------------")
+            dummy_next_race = dummy_next_race + 1
+            dummy_start_time = time.time()
+            dummy_track_order = [1, 2, 3]
+            random.shuffle(dummy_track_order)
+
+        if dummy_track_order is None:
+            time.sleep(0.1)
+            msg = DummyCanMsg(0, 0)
+            msg.arbitration_id = 0
+            return msg  # return empty msg
+
+        track = dummy_track_order.pop()
+        wait = random.randint(100, 500)  # ms
+        time.sleep(wait / 1000)
+        t = time.time() - dummy_start_time
+        print("Track: ", track, " time: ", t)
+
+        if len(dummy_track_order) == 0:  # finished all races: reset
+            dummy_track_order = None
+
+        return DummyCanMsg(track, t)
 
 
 if __name__ == "__main__":
