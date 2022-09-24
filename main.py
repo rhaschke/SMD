@@ -92,11 +92,14 @@ class TeamBox(QtWidgets.QComboBox):
         completer.setFilterMode(QtCore.Qt.MatchContains)
         completer.setModel(model)
 
-        self.currentTextChanged.connect(self._onChange)
+        self.lineEdit().editingFinished.connect(self._onChange)
 
-    def _onChange(self, text: str):
-
-        # TODO: validate
+    def _onChange(self):
+        text = self.currentText()
+        if text not in self.model.stringList():
+            print("not valid")
+            proposed_completion = self.completer().currentCompletion()
+            self.setCurrentText(proposed_completion)
         self.teamChanged.emit(self.col, self.currentText())
 
 
