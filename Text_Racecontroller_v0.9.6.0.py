@@ -29,14 +29,8 @@ class input_race_GUI(Thread):
     def run(self):
         global raceNumber
         global raceFinished
-        global PointsTeam1
-        global PointsTeam2
-        global PointsTeam3
         raceNumber = 0
         raceFinished = False
-        PointsTeam1 = 0
-        PointsTeam2 = 0
-        PointsTeam3 = 0
         # Main window
         self.window1 = tk.Tk()
         self.window1.config(background="#FFFFFF")  # Background color of window
@@ -469,11 +463,11 @@ class input_race_GUI(Thread):
         self.raceNum.delete(0, tk.END)
         self.raceNum.insert(0, raceNumber)
         self.PointsTeam1.delete(0, tk.END)
-        self.PointsTeam1.insert(0, PointsTeam1)
+        self.PointsTeam1.insert(0, 0)
         self.PointsTeam2.delete(0, tk.END)
-        self.PointsTeam2.insert(0, PointsTeam2)
+        self.PointsTeam2.insert(0, 0)
         self.PointsTeam3.delete(0, tk.END)
-        self.PointsTeam3.insert(0, PointsTeam3)
+        self.PointsTeam3.insert(0, 0)
 
         self.window1.after(100, self.calculate_time_Points)
         # display main window
@@ -1026,17 +1020,6 @@ class input_race_GUI(Thread):
         self.event_1.set()
         self.event_1.clear()
 
-    def set_points(self, team, points):
-        global PointsTeam1
-        global PointsTeam2
-        global PointsTeam3
-        if team == 0:
-            PointsTeam1 = points
-        elif team == 1:
-            PointsTeam2 = points
-        elif team == 2:
-            PointsTeam3 = points
-
     def calculate_time_Points(self):
         global bestTimeTeam1
         global bestTimeTeam2
@@ -1092,11 +1075,15 @@ class input_race_GUI(Thread):
             ][TimeRace - 1]
             if all([t > 0 for t in race_times]):
                 raceFinished = True
-                current_points = [PointsTeam1, PointsTeam2, PointsTeam3]
                 sorted = list(enumerate(race_times))
                 sorted.sort(key=lambda pair: pair[1], reverse=True)
-                for p, (team, _) in enumerate(sorted):
-                    self.set_points(team, current_points[team] + p + 1)
+                widgets = [self.PointsTeam1, self.PointsTeam2, self.PointsTeam3]
+                for points, (team, _) in enumerate(sorted):
+                    w = widgets[team]
+                    points += 1  # points from 1..3 not 0..2
+                    points += int(self.PointsTeam1.get())  # add current points
+                    w.delete(0, tk.END)
+                    w.insert(0, points)
 
         self.window1.after(100, self.calculate_time_Points)
 
