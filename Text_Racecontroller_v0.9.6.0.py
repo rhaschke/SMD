@@ -428,6 +428,7 @@ class input_race_GUI(Thread):
         self.crText.grid(column=6, row=40, pady=20)
 
         self.quit.grid(column=7, row=40)
+        self.clear_TeamOrderRace()  # initialize variables
 
         self.label_bestTimeTeam1.config(text=str(bestTimeTeam1))
         self.label_bestTimeTeam1.after(100, self.bestTimeTeam1_label)
