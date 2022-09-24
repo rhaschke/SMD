@@ -42,7 +42,7 @@ class input_race_GUI(Thread):
         self.window1.config(background="#FFFFFF")  # Background color of window
         self.window1.title("Solarcup Bahn Version 2.0")
 
-        self.img1 = Image.open("/home/VDE/workspace/pictures/logo_smd-1.png")
+        self.img1 = Image.open("logo.png")
         self.pic1 = ImageTk.PhotoImage(self.img1)
 
         self.checkDisqual1_1 = tk.StringVar()
@@ -66,7 +66,7 @@ class input_race_GUI(Thread):
         self.checkDisqual3_3.set("no")
 
         # Define Image
-        vde_Logo1 = tk.PhotoImage(file="/home/VDE/workspace/pictures/vde-logo-bild_2.png")
+        vde_Logo1 = tk.PhotoImage(file="logo.png")
         self.logo1 = tk.Label(master=self.window1, image=vde_Logo1, background="#FFFFFF")
         smd_Logo1 = ImageTk.PhotoImage(self.img1)
         self.logo2 = tk.Label(master=self.window1, image=smd_Logo1, background="#FFFFFF")
