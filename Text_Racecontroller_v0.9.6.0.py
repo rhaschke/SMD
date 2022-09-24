@@ -1024,7 +1024,6 @@ class calculate_time_Points(Thread):
         self.running = running
 
     def run(self):
-        global timeRecieved
         global bestTimeTeam1
         global bestTimeTeam2
         global bestTimeTeam3
@@ -1032,25 +1031,19 @@ class calculate_time_Points(Thread):
         bestTimeTeam2 = 0
         bestTimeTeam3 = 0
 
-        timeRecieved = 0
-
         while self.running:
             time.sleep(0.1)
             if Timer1_1 > 0:
-                timeRecieved = 1
                 bestTimeTeam1 = Timer1_1
             if Timer2_1 > 0:
-                timeRecieved = 1
                 bestTimeTeam2 = Timer2_1
             if Timer3_1 > 0:
-                timeRecieved = 1
                 if Team3 == "---":
                     bestTimeTeam2 = Timer3_1
                 else:
                     bestTimeTeam3 = Timer3_1
 
             if Timer1_2 > 0:
-                timeRecieved = 1
                 if Team3 == "---":
                     if Timer1_2 < bestTimeTeam2:
                         bestTimeTeam2 = Timer1_2
@@ -1058,11 +1051,9 @@ class calculate_time_Points(Thread):
                     if Timer1_2 < bestTimeTeam3:
                         bestTimeTeam3 = Timer1_2
             if Timer2_2 > 0:
-                timeRecieved = 1
                 if Timer2_2 < bestTimeTeam1:
                     bestTimeTeam1 = Timer2_2
             if Timer3_2 > 0:
-                timeRecieved = 1
                 if Team3 == "---":
                     if Timer3_2 < bestTimeTeam1:
                         bestTimeTeam1 = Timer3_2
@@ -1071,15 +1062,12 @@ class calculate_time_Points(Thread):
                         bestTimeTeam2 = Timer3_2
 
             if Timer1_3 > 0:
-                timeRecieved = 1
                 if Timer1_3 < bestTimeTeam2:
                     bestTimeTeam2 = Timer1_3
             if Timer2_3 > 0:
-                timeRecieved = 1
                 if Timer2_3 < bestTimeTeam3:
                     bestTimeTeam3 = Timer2_3
             if Timer3_3 > 0:
-                timeRecieved = 1
                 if Timer3_3 < bestTimeTeam1:
                     bestTimeTeam1 = Timer3_3
 
