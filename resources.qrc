@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="logo">
+    <file>smd.png</file>
+    <file>vde.png</file>
+  </qresource>
+</RCC>
