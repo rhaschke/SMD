@@ -475,6 +475,7 @@ class input_race_GUI(Thread):
         self.PointsTeam3.delete(0, tk.END)
         self.PointsTeam3.insert(0, PointsTeam3)
 
+        self.window1.after(100, self.calculate_time_Points)
         # display main window
         self.window1.mainloop()
 
@@ -1025,25 +1026,18 @@ class input_race_GUI(Thread):
         self.event_1.set()
         self.event_1.clear()
 
+    def set_points(self, team, points):
+        global PointsTeam1
+        global PointsTeam2
+        global PointsTeam3
+        if team == 0:
+            PointsTeam1 = points
+        elif team == 1:
+            PointsTeam2 = points
+        elif team == 2:
+            PointsTeam3 = points
 
-def set_points(team, points):
-    global PointsTeam1
-    global PointsTeam2
-    global PointsTeam3
-    if team == 0:
-        PointsTeam1 = points
-    elif team == 1:
-        PointsTeam2 = points
-    elif team == 2:
-        PointsTeam3 = points
-
-
-class calculate_time_Points(Thread):
-    def __init__(self, running):
-        Thread.__init__(self)
-        self.running = running
-
-    def run(self):
+    def calculate_time_Points(self):
         global bestTimeTeam1
         global bestTimeTeam2
         global bestTimeTeam3
@@ -1052,59 +1046,59 @@ class calculate_time_Points(Thread):
         bestTimeTeam2 = 0
         bestTimeTeam3 = 0
 
-        while self.running:
-            time.sleep(0.1)
-            if Timer1_1 > 0:
-                bestTimeTeam1 = Timer1_1
-            if Timer2_1 > 0:
-                bestTimeTeam2 = Timer2_1
-            if Timer3_1 > 0:
-                if Team3 == "---":
-                    bestTimeTeam2 = Timer3_1
-                else:
-                    bestTimeTeam3 = Timer3_1
+        if Timer1_1 > 0:
+            bestTimeTeam1 = Timer1_1
+        if Timer2_1 > 0:
+            bestTimeTeam2 = Timer2_1
+        if Timer3_1 > 0:
+            if Team3 == "---":
+                bestTimeTeam2 = Timer3_1
+            else:
+                bestTimeTeam3 = Timer3_1
 
-            if Timer1_2 > 0:
-                if Team3 == "---":
-                    if Timer1_2 < bestTimeTeam2:
-                        bestTimeTeam2 = Timer1_2
-                else:
-                    if Timer1_2 < bestTimeTeam3:
-                        bestTimeTeam3 = Timer1_2
-            if Timer2_2 > 0:
-                if Timer2_2 < bestTimeTeam1:
-                    bestTimeTeam1 = Timer2_2
-            if Timer3_2 > 0:
-                if Team3 == "---":
-                    if Timer3_2 < bestTimeTeam1:
-                        bestTimeTeam1 = Timer3_2
-                else:
-                    if Timer3_2 < bestTimeTeam2:
-                        bestTimeTeam2 = Timer3_2
+        if Timer1_2 > 0:
+            if Team3 == "---":
+                if Timer1_2 < bestTimeTeam2:
+                    bestTimeTeam2 = Timer1_2
+            else:
+                if Timer1_2 < bestTimeTeam3:
+                    bestTimeTeam3 = Timer1_2
+        if Timer2_2 > 0:
+            if Timer2_2 < bestTimeTeam1:
+                bestTimeTeam1 = Timer2_2
+        if Timer3_2 > 0:
+            if Team3 == "---":
+                if Timer3_2 < bestTimeTeam1:
+                    bestTimeTeam1 = Timer3_2
+            else:
+                if Timer3_2 < bestTimeTeam2:
+                    bestTimeTeam2 = Timer3_2
 
-            if Timer1_3 > 0:
-                if Timer1_3 < bestTimeTeam2:
-                    bestTimeTeam2 = Timer1_3
-            if Timer2_3 > 0:
-                if Timer2_3 < bestTimeTeam3:
-                    bestTimeTeam3 = Timer2_3
-            if Timer3_3 > 0:
-                if Timer3_3 < bestTimeTeam1:
-                    bestTimeTeam1 = Timer3_3
+        if Timer1_3 > 0:
+            if Timer1_3 < bestTimeTeam2:
+                bestTimeTeam2 = Timer1_3
+        if Timer2_3 > 0:
+            if Timer2_3 < bestTimeTeam3:
+                bestTimeTeam3 = Timer2_3
+        if Timer3_3 > 0:
+            if Timer3_3 < bestTimeTeam1:
+                bestTimeTeam1 = Timer3_3
 
-            if not raceFinished:
-                race_times = [
-                    [Timer1_1, Timer2_1, Timer3_1],
-                    [Timer1_2, Timer2_2, Timer3_2],
-                    [Timer1_3, Timer2_3, Timer3_3],
-                ][TimeRace - 1]
-                if all([t > 0 for t in race_times]):
-                    raceFinished = True
-                    current_points = [PointsTeam1, PointsTeam2, PointsTeam3]
-                    sorted = list(enumerate(race_times))
-                    sorted.sort(key=lambda pair: pair[1], reverse=True)
-                    for p, (team, _) in enumerate(sorted):
-                        set_points(team, current_points[team] + p + 1)
+        if not raceFinished:
+            race_times = [
+                [Timer1_1, Timer2_1, Timer3_1],
+                [Timer1_2, Timer2_2, Timer3_2],
+                [Timer1_3, Timer2_3, Timer3_3],
+            ][TimeRace - 1]
+            if all([t > 0 for t in race_times]):
+                raceFinished = True
+                current_points = [PointsTeam1, PointsTeam2, PointsTeam3]
+                sorted = list(enumerate(race_times))
+                sorted.sort(key=lambda pair: pair[1], reverse=True)
+                for p, (team, _) in enumerate(sorted):
+                    self.set_points(team, current_points[team] + p + 1)
+
+        self.window1.after(100, self.calculate_time_Points)
 
     def stop(self):
         self._is_running = False
@@ -1796,14 +1790,12 @@ def main():
     can_recv = can_recvData(can_bus, running)
     input_race_data = input_race_GUI(event_1)
     input_control_data = input_control_GUI(event_1)
-    calc_race_data = calculate_time_Points(running)
     # start threads
     can_send.start()  # data send to CAN Bus
     can_recv.start()  # data send to CAN Bus
     input_race_data.start()  # GUI Input Teams
     time.sleep(0.5)
     input_control_data.start()  # GUI Input controller data
-    calc_race_data.start()  # Calculate best time and piont of teams
 
     can_send.join()
     can_recv.join()
