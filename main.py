@@ -1,3 +1,4 @@
+import enum
 from multiprocessing.sharedctypes import Value
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from typing import List
@@ -32,6 +33,9 @@ class DataWidget(QtWidgets.QWidget):
     def setTime(self, time: float):
         self.time.setValue(time)
         self.resultChanged.emit(self.name.currentText())
+
+    def setTeam(self, team: str):
+        self.name.setCurrentText(team)
 
     def result(self):
         if (
@@ -126,6 +130,22 @@ class Race:
     def setTeamNames(self, names: List[str]):
         self.teams.setStringList(names)
         # automatically populate runs:
+        valid_names = [name for name in names if name != ""]
+        l = len(valid_names)
+        if l == 3:
+            for r in self.runs:
+                for i, w in enumerate(r.widgets):
+                    w.setTeam(valid_names[i])
+                valid_names.append(valid_names.pop(0))
+        elif l == 2:
+            for row, r in enumerate(self.runs):
+                for col, w in enumerate(r.widgets):
+                    if row == 2 or col == 1:
+                        w.setTeam("")
+            self.runs[0].widgets[0].setTeam(valid_names[0])
+            self.runs[0].widgets[2].setTeam(valid_names[1])
+            self.runs[1].widgets[0].setTeam(valid_names[1])
+            self.runs[1].widgets[2].setTeam(valid_names[0])
 
     def updateResult(self, team: str):
         print("team: ", team)
