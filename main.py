@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from typing import List
 import os
@@ -8,7 +9,7 @@ import random
 class DataWidget(QtWidgets.QWidget):
     doubleClicked = QtCore.pyqtSignal()
     teamChanged = QtCore.pyqtSignal(int, str)  # pass column and new team
-    resultChanged = QtCore.pyqtSignal(int)  # pass column
+    resultChanged = QtCore.pyqtSignal(str)  # pass team
 
     def __init__(self, column: int, teams: QtCore.QStringListModel) -> None:
         super().__init__()
@@ -19,14 +20,24 @@ class DataWidget(QtWidgets.QWidget):
         self.name.currentTextChanged.connect(
             lambda: self.teamChanged.emit(self.column, self.name.currentText())
         )
-        self.invalid.stateChanged.connect(lambda: self.resultChanged.emit(self.column))
+
+        self.invalid.stateChanged.connect(
+            lambda: self.resultChanged.emit(self.name.currentText())
+        )
+        self.name.currentTextChanged.connect(
+            lambda: self.resultChanged.emit(self.name.currentText())
+        )
 
     def setTime(self, time: float):
-        self.doubleSpinBox_time.setValue(time)
-        self.resultChanged.emit(self.column)
+        self.time.setValue(time)
+        self.resultChanged.emit(self.name.currentText())
 
     def result(self):
-        if self.invalid.isChecked() or self.time.value() <= 0:
+        if (
+            self.invalid.isChecked()
+            or self.time.value() <= 0
+            and self.name.currentText() != ""
+        ):
             return 0
         return self.time.value()
 
@@ -41,7 +52,7 @@ class DataWidget(QtWidgets.QWidget):
 
 class RunRow(QtCore.QObject):
     doubleClicked = QtCore.pyqtSignal()
-    resultChanged = QtCore.pyqtSignal(int)  # pass column
+    resultChanged = QtCore.pyqtSignal(str)  # pass column
 
     def __init__(
         self,
@@ -69,23 +80,24 @@ class RunRow(QtCore.QObject):
         for w in self.widgets:
             w.setEnabled(enable)
 
-    def result(self, col: int):
-        # TODO: consider team instead of track
+    def result(self, team: str):
         sortedResults = sorted(
-            enumerate([w.result for w in self.widgets if w.result() > 0]), key=lambda x: x[1]
+            [(w.name.currentText(), w.result()) for w in self.widgets if w.result() > 0],
+            key=lambda x: x[1],
         )
+        print(sortedResults)
         order, _ = zip(*sortedResults)
-        if col not in order:
+        if team not in order or team == "":
             return 0
-        return 3 - order.index(col)
+        return 3 - order.index(team)
 
 
 class Race:
     def __init__(self, grid: QtWidgets.QGridLayout) -> None:
         self.teams = QtCore.QStringListModel()
         self.runs = [RunRow(i, self.teams, grid, 5 + i) for i in range(3)]
-        for w in self.runs:
-            w.resultChanged.connect(self.updateResult)
+        for r in self.runs:
+            r.resultChanged.connect(self.updateResult)
 
         self.points = [QtWidgets.QSpinBox() for i in range(3)]
         for col, p in enumerate(self.points):
@@ -96,6 +108,10 @@ class Race:
             p.setReadOnly(True)
             grid.addWidget(p, 3, 1 + col)
 
+        for r in self.runs:
+            for w in r.widgets:
+                w.setTime(random.randint(500, 2000) / 100)
+
     def setTeamNames(self, names: List[str]):
         self.teams.setStringList(names)
 
@@ -103,8 +119,13 @@ class Race:
         for i, r in enumerate(self.runs):
             r.setEnabled(i == run)
 
-    def updateResult(self, col):
-        self.points[col] = sum(w.widgets[col].result() for w in self.runs)
+    def updateResult(self, team: str):
+        result = sum(w.result(team) for w in self.runs)
+        try:
+            idx = self.teams.stringList().index(team)
+            self.points[idx].setValue(result)
+        except ValueError:
+            pass
 
 
 class TeamBox(QtWidgets.QComboBox):
