@@ -2,11 +2,13 @@ from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from typing import List
 import os
 import sys
+import random
 
 
 class DataWidget(QtWidgets.QWidget):
     doubleClicked = QtCore.pyqtSignal()
     teamChanged = QtCore.pyqtSignal(int, str)  # pass column and new team
+    resultChanged = QtCore.pyqtSignal(int)  # pass column
 
     def __init__(self, column: int, teams: QtCore.QStringListModel) -> None:
         super().__init__()
@@ -17,9 +19,16 @@ class DataWidget(QtWidgets.QWidget):
         self.name.currentTextChanged.connect(
             lambda: self.teamChanged.emit(self.column, self.name.currentText())
         )
+        self.invalid.stateChanged.connect(lambda: self.resultChanged.emit(self.column))
 
     def setTime(self, time: float):
         self.doubleSpinBox_time.setValue(time)
+        self.resultChanged.emit(self.column)
+
+    def result(self):
+        if self.invalid.isChecked() or self.time.value() <= 0:
+            return 0
+        return self.time.value()
 
     def reset(self):
         self.name.setCurrentIndex(-1)
@@ -32,6 +41,7 @@ class DataWidget(QtWidgets.QWidget):
 
 class RunRow(QtCore.QObject):
     doubleClicked = QtCore.pyqtSignal()
+    resultChanged = QtCore.pyqtSignal(int)  # pass column
 
     def __init__(
         self,
@@ -48,19 +58,26 @@ class RunRow(QtCore.QObject):
             grid.addWidget(w, row, col + c)
             w.doubleClicked.connect(self.doubleClicked)
             w.teamChanged.connect(self.anyTeamChanged)
+            w.resultChanged.connect(self.resultChanged)
 
     def anyTeamChanged(self, col: int, team: str):
         for w in self.widgets:
             if w.column != col and team != "" and w.name.currentText() == team:
                 w.name.setCurrentIndex(-1)
 
+    def setEnabled(self, enable: bool):
+        for w in self.widgets:
+            w.setEnabled(enable)
 
-class TeamCompleter(QtWidgets.QCompleter):
-    def __init__(self, teams: QtCore.QStringListModel):
-        self.teams = teams
-
-    def update(self, word: str):
-        pass
+    def result(self, col: int):
+        # TODO: consider team instead of track
+        sortedResults = sorted(
+            enumerate([w.result for w in self.widgets if w.result() > 0]), key=lambda x: x[1]
+        )
+        order, _ = zip(*sortedResults)
+        if col not in order:
+            return 0
+        return 3 - order.index(col)
 
 
 class Race:
@@ -68,10 +85,26 @@ class Race:
         self.teams = QtCore.QStringListModel()
         self.runs = [RunRow(i, self.teams, grid, 5 + i) for i in range(3)]
         for w in self.runs:
-            w.doubleClicked.connect(lambda: print("doubleClicked"))
+            w.resultChanged.connect(self.updateResult)
+
+        self.points = [QtWidgets.QSpinBox() for i in range(3)]
+        for col, p in enumerate(self.points):
+            font = QtGui.QFont()
+            font.setPointSize(16)
+            p.setFont(font)
+            p.setButtonSymbols(QtWidgets.QSpinBox.ButtonSymbols.NoButtons)
+            p.setReadOnly(True)
+            grid.addWidget(p, 3, 1 + col)
 
     def setTeamNames(self, names: List[str]):
         self.teams.setStringList(names)
+
+    def setCurrentRun(self, run: int):
+        for i, r in enumerate(self.runs):
+            r.setEnabled(i == run)
+
+    def updateResult(self, col):
+        self.points[col] = sum(w.widgets[col].result() for w in self.runs)
 
 
 class TeamBox(QtWidgets.QComboBox):
@@ -97,7 +130,6 @@ class TeamBox(QtWidgets.QComboBox):
     def _onChange(self):
         text = self.currentText()
         if text not in self.model.stringList():
-            print("not valid")
             proposed_completion = self.completer().currentCompletion()
             self.setCurrentText(proposed_completion)
         self.teamChanged.emit(self.col, self.currentText())
@@ -114,7 +146,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.vde.setPixmap(QtGui.QPixmap(os.path.join(mydir, "vde.png")))
 
         self.race = Race(self.gridLayout)
-        self.race.setTeamNames(["1", "2", "3"])
+        self.race.setCurrentRun(0)
 
         # racing_class (TODO: From Database)
         self.race_class.addItems(["UA", "UB", "AZ", "SE"])
@@ -128,7 +160,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.teams = [TeamBox(i, self.teamModel) for i in range(3)]
         for t in self.teams:
             t.teamChanged.connect(self.anyTeamChanged)
-            self.gridLayout.addWidget(t, 4, 1 + t.col, 1, 1)
+            self.gridLayout.addWidget(t, 1, 1 + t.col, 1, 1)
 
         # ensure that one team can only be in one slot at the time
 
