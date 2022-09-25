@@ -134,6 +134,37 @@
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout">
+      <item row="4" column="1">
+       <widget class="QLabel" name="label_track1">
+        <property name="font">
+         <font>
+          <pointsize>20</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Bahn 1</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_race_class">
+        <property name="text">
+         <string>Rennklasse:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_team">
+        <property name="text">
+         <string>Team:</string>
+        </property>
+       </widget>
+      </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_best_time">
         <property name="text">
@@ -158,40 +189,15 @@
         </property>
        </widget>
       </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="label_run2">
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_points">
         <property name="text">
-         <string>Lauf 2:</string>
+         <string>Punkte:</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_race_class">
-        <property name="text">
-         <string>Rennklasse:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="label_run1">
-        <property name="text">
-         <string>Lauf 1:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="label_run3">
-        <property name="text">
-         <string>Lauf 3:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_team">
-        <property name="text">
-         <string>Team:</string>
-        </property>
-       </widget>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="spinBox"/>
       </item>
       <item row="4" column="3">
        <widget class="QLabel" name="label_track3">
@@ -207,30 +213,6 @@
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QLabel" name="label_track1">
-        <property name="font">
-         <font>
-          <pointsize>20</pointsize>
-          <weight>75</weight>
-          <bold>true</bold>
-         </font>
-        </property>
-        <property name="text">
-         <string>Bahn 1</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_points">
-        <property name="text">
-         <string>Punkte:</string>
         </property>
        </widget>
       </item>

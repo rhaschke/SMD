@@ -85,7 +85,8 @@ class RunRow(QtCore.QObject):
             [(w.name.currentText(), w.result()) for w in self.widgets if w.result() > 0],
             key=lambda x: x[1],
         )
-        print(sortedResults)
+        if sortedResults == []:
+            return 0
         order, _ = zip(*sortedResults)
         if team not in order or team == "":
             return 0
@@ -99,7 +100,15 @@ class Race:
         for r in self.runs:
             r.resultChanged.connect(self.updateResult)
 
+        self.run_buttons = [QtWidgets.QPushButton(f"Lauf {run+1}:") for run in range(3)]
+        for i, b in enumerate(self.run_buttons):
+            grid.addWidget(b, 5 + i, 0)
+        self.run_buttons[0].clicked.connect(lambda: self.setRun(0))
+        self.run_buttons[1].clicked.connect(lambda: self.setRun(1))
+        self.run_buttons[2].clicked.connect(lambda: self.setRun(2))
+
         self.points = [QtWidgets.QSpinBox() for i in range(3)]
+
         for col, p in enumerate(self.points):
             font = QtGui.QFont()
             font.setPointSize(16)
@@ -108,24 +117,29 @@ class Race:
             p.setReadOnly(True)
             grid.addWidget(p, 3, 1 + col)
 
+        # TEMP: set random times
         for r in self.runs:
             for w in r.widgets:
                 w.setTime(random.randint(500, 2000) / 100)
 
     def setTeamNames(self, names: List[str]):
         self.teams.setStringList(names)
-
-    def setCurrentRun(self, run: int):
-        for i, r in enumerate(self.runs):
-            r.setEnabled(i == run)
+        # automatically populate runs:
 
     def updateResult(self, team: str):
+        print("team: ", team)
+        indexes = [i for i, t in enumerate(self.teams.stringList()) if t == team]
         result = sum(w.result(team) for w in self.runs)
-        try:
-            idx = self.teams.stringList().index(team)
+        for idx in indexes:
             self.points[idx].setValue(result)
-        except ValueError:
-            pass
+
+    def setRun(self, run: int):
+        for i in range(3):
+            self.runs[i].setEnabled(i == run)
+            self.run_buttons[i].setEnabled(i == run + 1)
+
+    def reset(self):
+        self.setRun(-1)
 
 
 class TeamBox(QtWidgets.QComboBox):
@@ -167,7 +181,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.vde.setPixmap(QtGui.QPixmap(os.path.join(mydir, "vde.png")))
 
         self.race = Race(self.gridLayout)
-        self.race.setCurrentRun(0)
+        self.race.reset()
 
         # racing_class (TODO: From Database)
         self.race_class.addItems(["UA", "UB", "AZ", "SE"])
@@ -189,7 +203,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for i, t in enumerate(self.teams):
             if i != col and team != "" and t.currentText() == team:
                 t.setCurrentText("")
-        self.race.setTeamNames(list(set([t.currentText() for t in self.teams])))
+        self.race.setTeamNames([t.currentText() for t in self.teams])
 
     def onRaceClassChanged(self, race_class: str):
         tmp_participants = [race_class + " " + str(i) for i in range(25)]
