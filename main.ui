@@ -196,9 +196,6 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="spinBox"/>
-      </item>
       <item row="4" column="3">
        <widget class="QLabel" name="label_track3">
         <property name="font">

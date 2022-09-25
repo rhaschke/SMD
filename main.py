@@ -27,6 +27,7 @@ class DataWidget(QtWidgets.QWidget):
         self.name.currentTextChanged.connect(
             lambda: self.resultChanged.emit(self.name.currentText())
         )
+        self.resultChanged.connect(lambda: self.points.setValue(0))  # TODO: setPoints
 
     def setTime(self, time: float):
         self.time.setValue(time)
