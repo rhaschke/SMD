@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from typing import List
+import os
 import sys
 
 
@@ -103,6 +104,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         uic.loadUi("main.ui", self)  # load .ui file
+
+        # Load logos
+        mydir = os.path.dirname(os.path.realpath(__file__))
+        self.smd.setPixmap(QtGui.QPixmap(os.path.join(mydir, "smd.png")))
+        self.vde.setPixmap(QtGui.QPixmap(os.path.join(mydir, "vde.png")))
 
         self.race = Race(self.gridLayout)
         self.race.setTeamNames(["1", "2", "3"])
