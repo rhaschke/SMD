@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import Qt, QSize, QObject
+from .data import DataWidget
 
 
 def computeMaxSize(aspect: float, max_size: QSize) -> QSize:
@@ -57,3 +58,28 @@ class ScaledImageLabel(QtWidgets.QLabel):
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         if self.aspect is not None:
             super().setPixmap(self.scaledPixmap())
+
+
+class TeamComboBox(QtWidgets.QComboBox):
+    teamChanged = QtCore.pyqtSignal(int, str)
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
+        self.col = None
+        self.setEditable(True)
+        completer = self.completer()
+        completer.setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
+        completer.setFilterMode(QtCore.Qt.MatchContains)
+
+        self.lineEdit().editingFinished.connect(self._onChange)
+
+    def setModel(self, model: QtCore.QAbstractItemModel) -> None:
+        self.completer().setModel(model)
+        super().setModel(model)
+
+    def _onChange(self):
+        text = self.currentText()
+        if text not in self.model().stringList():
+            proposed_completion = self.completer().currentCompletion()
+            self.setCurrentText(proposed_completion)
+        self.teamChanged.emit(self.col, self.currentText())

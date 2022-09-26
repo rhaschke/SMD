@@ -222,6 +222,33 @@
         </property>
        </widget>
       </item>
+      <item row="1" column="1">
+       <widget class="TeamComboBox" name="team_combobox_1">
+        <property name="font">
+         <font>
+          <pointsize>16</pointsize>
+         </font>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="TeamComboBox" name="team_combobox_2">
+        <property name="font">
+         <font>
+          <pointsize>16</pointsize>
+         </font>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="TeamComboBox" name="team_combobox_3">
+        <property name="font">
+         <font>
+          <pointsize>16</pointsize>
+         </font>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
    </layout>
@@ -242,7 +269,12 @@
   <customwidget>
    <class>ScaledImageLabel</class>
    <extends>QLabel</extends>
-   <header>widgets</header>
+   <header>gui.widgets</header>
+  </customwidget>
+  <customwidget>
+   <class>TeamComboBox</class>
+   <extends>QComboBox</extends>
+   <header>gui.widgets</header>
   </customwidget>
  </customwidgets>
  <resources>
