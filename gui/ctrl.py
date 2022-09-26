@@ -1,35 +1,29 @@
+from inspect import trace
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
-from .widgets import DataWidget
+from .widgets import RunWidget, DataWidget, TeamGroup, TeamComboBox
 from typing import List
 import utils
-import random
+import numpy as np
+from collections import OrderedDict
+from utils.debug import traced
 
 
-class RunRow(QtCore.QObject):
-    doubleClicked = QtCore.pyqtSignal()
-    resultChanged = QtCore.pyqtSignal(str)  # pass column
+class RunRow(TeamGroup):
+    resultChanged = QtCore.pyqtSignal()
 
     def __init__(
         self,
-        num: int,
         teams: QtCore.QStringListModel,
         grid: QtWidgets.QGridLayout,
         row: int,
         col: int = 1,
     ) -> None:
         super().__init__()
-        self.num = num
         self.widgets = [DataWidget(i, teams) for i in range(3)]
         for c, w in enumerate(self.widgets):
             grid.addWidget(w, row, col + c)
-            w.doubleClicked.connect(self.doubleClicked)
-            w.teamChanged.connect(self.anyTeamChanged)
-            w.resultChanged.connect(self.resultChanged)
-
-    def anyTeamChanged(self, col: int, team: str):
-        for w in self.widgets:
-            if w.column != col and team != "" and w.name.currentText() == team:
-                w.name.setCurrentIndex(-1)
+            w.invalidChanged.connect(self.resultChanged)
+        self.setGroup([w.team for w in self.widgets])
 
     def setEnabled(self, enable: bool):
         for w in self.widgets:
@@ -49,105 +43,96 @@ class RunRow(QtCore.QObject):
 
 
 class Race:
-    def __init__(self, grid: QtWidgets.QGridLayout) -> None:
-        self.teams = QtCore.QStringListModel()
-        self.runs = [RunRow(i, self.teams, grid, 5 + i) for i in range(3)]
-        for r in self.runs:
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        self.teamsModel = QtCore.QStringListModel()
+
+        # Create top row's team comboboxes
+        self.teams = TeamGroup([parent.findChild(TeamComboBox, f"team_combobox_{i+1}") for i in range(3)])
+        for i, team in enumerate(self.teams):
+            team.col = i
+            team.setModel(self.teamsModel)
+            team.teamChanged.connect(lambda: self.configureRuns([t.currentText() for t in self.teams]))
+
+        # Create widgets row-wise for each run
+        self.run_rows = [RunRow(self.teamsModel, parent.gridLayout, 5 + i) for i in range(3)]
+        for r in self.run_rows:
             r.resultChanged.connect(self.updateResult)
 
-        self.run_buttons = [QtWidgets.QPushButton(f"Lauf {run+1}:") for run in range(3)]
-        for i, b in enumerate(self.run_buttons):
-            grid.addWidget(b, 5 + i, 0)
-        self.run_buttons[0].clicked.connect(lambda: self.setRun(0))
-        self.run_buttons[1].clicked.connect(lambda: self.setRun(1))
-        self.run_buttons[2].clicked.connect(lambda: self.setRun(2))
+        # "Lauf x" widgets in first column
+        self.run_widgets = [RunWidget(i) for i in range(3)]
+        for i, w in enumerate(self.run_widgets):
+            parent.gridLayout.addWidget(w, 5 + i, 0)
+            w.activate.connect(self.setRun)
 
-        self.points = [QtWidgets.QSpinBox() for i in range(3)]
-
-        for col, p in enumerate(self.points):
-            font = QtGui.QFont()
-            font.setPointSize(16)
-            p.setFont(font)
-            p.setButtonSymbols(QtWidgets.QSpinBox.ButtonSymbols.NoButtons)
-            p.setReadOnly(True)
-            grid.addWidget(p, 3, 1 + col)
-
-        # TEMP: set random times
-        for r in self.runs:
-            for w in r.widgets:
-                w.setTime(random.randint(500, 2000) / 100)
+        # total points widgets
+        self.points = [parent.findChild(QtWidgets.QSpinBox, f"points_{i+1}") for i in range(3)]
 
     def setTeamNames(self, names: List[str]):
-        self.teams.setStringList(names)
-        # automatically populate runs:
-        valid_names = [name for name in names if name != ""]
-        l = len(valid_names)
-        if l == 3:
-            for r in self.runs:
-                for i, w in enumerate(r.widgets):
-                    w.setTeam(valid_names[i])
-                valid_names.append(valid_names.pop(0))
-        elif l == 2:
-            for row, r in enumerate(self.runs):
-                for col, w in enumerate(r.widgets):
-                    if row == 2 or col == 1:
-                        w.setTeam("")
-            self.runs[0].widgets[0].setTeam(valid_names[0])
-            self.runs[0].widgets[2].setTeam(valid_names[1])
-            self.runs[1].widgets[0].setTeam(valid_names[1])
-            self.runs[1].widgets[2].setTeam(valid_names[0])
+        assert len(names) in [2, 3]
+        # store 3 team names + no_team_str in teamsModel
+        names = list(OrderedDict.fromkeys(names + [f"{utils.no_team_str}"]))
+        self.teamsModel.setStringList(names)
+        for i, team_combo in enumerate(self.teams):
+            team_combo.setCurrentText(names[i])
+
+        self.configureRuns(names[:3])  # configure all RunRows
+        self.setRun(-1)  # disable all runs
+        self.run_widgets[0].setEnabled(True)
+
+    def configureRuns(self, names):
+        """configure run rows based on team names"""
+        assert len(names) == 3
+        names = np.array(names)
+        valid = names != utils.no_team_str
+        num_valid = np.count_nonzero(valid)
+
+        for run in range(3):
+            if run >= num_valid:
+                for i in range(3):
+                    self.run_rows[run][i].setCurrentIndex(-1)
+                continue
+
+            tracks = np.arange(3)  # initialize to 0 1 2
+            # rotate valid tracks only, use +run to rotate in opposite direction
+            rotate = np.mod(np.arange(num_valid) - run, num_valid)
+            tracks[valid] = tracks[valid][rotate]  # assign new ordering
+            for i in range(3):
+                self.run_rows[run][i].setCurrentText(names[tracks[i]])
 
     def updateResult(self, team: str):
-        print("team: ", team)
         indexes = [i for i, t in enumerate(self.teams.stringList()) if t == team]
-        result = sum(w.result(team) for w in self.runs)
+        result = sum(w.result(team) for w in self.run_rows)
         for idx in indexes:
             self.points[idx].setValue(result)
 
     def setRun(self, run: int):
+        # Enable/disable widgets
         for i in range(3):
-            self.runs[i].setEnabled(i == run)
-            self.run_buttons[i].setEnabled(i == run + 1)
-
-    def reset(self):
-        self.setRun(-1)
+            self.run_rows[i].setEnabled(i <= run)
+            self.run_widgets[i].setEnabled(i <= run)
 
 
-class RaceControlWindow(QtWidgets.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         uic.loadUi(utils.path(__file__, "ctrl.ui"), self)  # load .ui file
+        self.next_race_button.clicked.connect(self.nextRace)
 
         # Load logos
         self.smd.setPixmap(QtGui.QPixmap(utils.path(__file__, "smd.png")))
         self.vde.setPixmap(QtGui.QPixmap(utils.path(__file__, "vde.png")))
 
-        self.race = Race(self.gridLayout)
-        self.race.reset()
+        self.race_class_combo: QtWidgets.QComboBox
+        self.race_class_combo.setModel(QtCore.QStringListModel())
+        self.race_class_combo.model().setStringList(["UA", "UB"])
+        self.race_class_combo.setCurrentIndex(0)
+        self.race_class_combo.currentTextChanged.connect(self.nextRace)
 
-        # racing_class (TODO: From Database)
-        self.race_class.addItems(["UA", "UB", "AZ", "SE"])
-        self.race_class.currentTextChanged.connect(self.onRaceClassChanged)
+        self.race = Race(self)
 
-        # teammodel
-        self.teamModel = QtCore.QStringListModel()
+    # Fetch next race (TODO: from database)
 
-        self.onRaceClassChanged("UA")
-        self.teams = [getattr(self, f"team_combobox_{i+1}") for i in range(3)]
-        for i, team in enumerate(self.teams):
-            team.col = i
-            team.setModel(self.teamModel)
-            team.teamChanged.connect(self.anyTeamChanged)
-
-        # ensure that one team can only be in one slot at the time
-
-    def anyTeamChanged(self, col: int, team: str):
-        for i, t in enumerate(self.teams):
-            if i != col and team != "" and t.currentText() == team:
-                t.setCurrentText("")
-        self.race.setTeamNames([t.currentText() for t in self.teams])
-
-    def onRaceClassChanged(self, race_class: str):
-        tmp_participants = [race_class + " " + str(i) for i in range(25)]
-        tmp_participants.append("")
-        self.teamModel.setStringList(tmp_participants)
+    def nextRace(self):
+        import random
+        self.race.setTeamNames([f"{self.race_class_combo.currentText()}{i+1:02d}"
+                                for i in random.sample(range(25), random.randint(2, 3))])

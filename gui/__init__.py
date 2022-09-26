@@ -1,1 +1,1 @@
-from .ctrl import RaceControlWindow
+from .ctrl import MainWindow
