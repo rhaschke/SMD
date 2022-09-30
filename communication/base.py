@@ -67,8 +67,8 @@ class BaseComm(QtCore.QObject):
     def setBlockSensorTime(self, ms: int):
         self._send(0x1FFB5000, ms)
 
-    def blockClock2(self, block: bool):
-        self._send(0x1FFB6200, int(block))
+    def blockClock(self, id: int, block: bool):
+        self._send(0x1FFB6100 + id * 0x100, int(block))
 
     def requestStatus(self):
         self._send(0x1FFBF000, 1)
