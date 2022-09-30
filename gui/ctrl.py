@@ -1,6 +1,7 @@
 from inspect import trace
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from .widgets import RunWidget, DataWidget, TeamGroup, TeamComboBox
+from communication import CanBusComm, DummyComm
 from typing import List
 import utils
 import numpy as np
@@ -45,6 +46,7 @@ class RunRow(TeamGroup):
 class Race:
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         self.teamsModel = QtCore.QStringListModel()
+        self.current_run = -1
 
         # Create top row's team comboboxes
         self.teams = TeamGroup([parent.findChild(TeamComboBox, f"team_combobox_{i+1}") for i in range(3)])
@@ -66,6 +68,14 @@ class Race:
 
         # total points widgets
         self.points = [parent.findChild(QtWidgets.QSpinBox, f"points_{i+1}") for i in range(3)]
+
+        try:
+            self.comm = CanBusComm()
+        except Exception as e:
+            print("Failed to initialize can bus: ", e)
+            self.comm = DummyComm()
+
+        self.comm.received_time.connect(self.onReceivedTime)
 
     def setTeamNames(self, names: List[str]):
         assert len(names) in [2, 3]
@@ -110,6 +120,19 @@ class Race:
         for i in range(3):
             self.run_rows[i].setEnabled(i <= run)
             self.run_widgets[i].setEnabled(i <= run)
+        self.current_run = run
+        if run >= 0:  # Prepare run
+            # Block clock on unused tracks
+            for i, team in enumerate(self.run_rows[run].teams):
+                self.comm.blockClock(i, team.currentText() == utils.no_team_str)
+            # Send team names to display
+            self.comm.setTextTracks([self.run_rows[run].teams[col].currentText() for col in range(3)])
+
+    def onReceivedTime(self, track: int, seconds: float):
+        if self.current_run < 0 or self.run_rows[self.current_run].teams[track-1].currentText() == utils.no_team_str:
+            return
+        print(f"Bahn {track} ({self.run_rows[self.current_run].teams[track-1].currentText()}): {seconds:.2f}s")
+        self.run_rows[self.current_run].widgets[track-1].setTime(seconds)
 
 
 class MainWindow(QtWidgets.QMainWindow):
