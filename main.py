@@ -10,3 +10,6 @@ main.nextRace()
 
 main.show()
 app.exec_()
+
+# stop communication threads
+main.race.comm.stop()

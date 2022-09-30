@@ -18,12 +18,21 @@ class BaseComm(QtCore.QObject):
     def __init__(self) -> None:
         super().__init__()
         self._queue = queue.SimpleQueue()
+        self._running = True
         self._sender_thread = Thread(target=self._send_loop)
         self._sender_thread.start()
 
+    def stop(self):
+        self._running = False
+        self._queue.put((0, 0, 0))
+        self._sender_thread.join()
+
     def _send_loop(self):
-        while True:
-            self._send_msg(*self._queue.get(block=True))
+        while self._running:
+            task = self._queue.get(block=True)
+            if self._running:
+                self._send_msg(*task)
+        print("finished send_loop")
 
     def _send_msg(self, id, data, wait):
         pass
