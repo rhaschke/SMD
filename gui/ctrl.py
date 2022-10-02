@@ -194,8 +194,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.race = Race(self)
 
     # Fetch next race (TODO: from database)
-
     def nextRace(self):
         import random
-        self.race.setTeamNames([f"{self.race_class_combo.currentText()}{i+1:02d}"
-                                for i in random.sample(range(25), random.randint(2, 3))])
+        names = [f"{self.race_class_combo.currentText()}{i+1:02d}" for i in random.sample(range(25), 3)]
+        try:
+            names[random.randint(0, 3)] = "---"
+        except IndexError:
+            pass
+        self.race.setTeamNames(names)
