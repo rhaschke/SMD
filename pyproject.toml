@@ -1,3 +1,32 @@
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SMD"
+description = "SolarMobil Bahn Controller"
+# readme = "README.rst"
+requires-python = ">=3.7"
+license = {text = "BSD 3-Clause License"}
+dependencies = [
+    "pyqt5",
+    "python-can",
+    "numpy",
+]
+dynamic = ["version"]
+#authors = ["Robert Haschke <rhaschke@techfak.uni-bielefeld.de>",]
+
+#[project.scripts]
+#smd = "main.py"
+
+[project.urls]
+"Homepage" = "https://github.com/rhaschke/SMD"
+"Bug Tracker" = "https://github.com/rhaschke/SMD/issues"
+
+[tool.setuptools.packages.find]
+where = ["gui", "models", "communication", "utils"]
+
 [tool.black]
 line-length = 94
 
