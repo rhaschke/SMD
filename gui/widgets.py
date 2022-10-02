@@ -65,7 +65,7 @@ class ScaledImageLabel(QtWidgets.QLabel):
 
 
 class TeamComboBox(QtWidgets.QComboBox):
-    none = "---"
+    """ComboBox to select team name from. Backed by a Qt ItemModel. Provides a Completer"""
     teamChanged = QtCore.pyqtSignal(int, int)  # col, index
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
@@ -90,6 +90,7 @@ class TeamComboBox(QtWidgets.QComboBox):
             self.lineEdit().editingFinished.connect(self._onEdited)
 
     def setCurrentText(self, text: str) -> None:
+        """Update current index if text matches a known entry"""
         idx = self.findText(text)
         if idx < 0:  # not found
             super().setCurrentText(text)
@@ -97,6 +98,7 @@ class TeamComboBox(QtWidgets.QComboBox):
             self.setCurrentIndex(idx)
 
     def _onEdited(self):
+        """Finish completion when leaving the LineEdit"""
         if self.currentIndex() < 0:  # no item selected
             proposed_completion = self.completer().currentCompletion()
             self.setCurrentText(proposed_completion)
@@ -117,7 +119,7 @@ class TeamGroup(QObject):
         for team in self.teams:
             team.teamChanged.connect(self.makeUnique)
 
-    # provide iterator methods
+    # provide iterator methods to access teams combo boxes
     def __iter__(self):
         return self.teams.__iter__()
 
@@ -126,6 +128,10 @@ class TeamGroup(QObject):
 
     def __getitem__(self, key):
         return self.teams.__getitem__(key)
+
+    def index(self, name: str):
+        """return array index of team with given name"""
+        return [team.currentText() for team in self.teams].index(name)
 
     def makeUnique(self, col: int, idx: int):
         if idx == -1:
@@ -136,6 +142,7 @@ class TeamGroup(QObject):
 
 
 class RunWidget(QtWidgets.QWidget):
+    """Meta widget used as header for run rows"""
     activate = QtCore.pyqtSignal(int)
     cancelled = QtCore.pyqtSignal(int)
 

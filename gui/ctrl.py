@@ -1,4 +1,3 @@
-from inspect import trace
 from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from .widgets import RunWidget, DataWidget, TeamGroup, TeamComboBox
 from communication import CanBusComm, DummyComm
@@ -6,11 +5,10 @@ from typing import List
 import utils
 import numpy as np
 from collections import OrderedDict
-from utils.debug import traced
 
 
 class RunRow(TeamGroup):
-    resultChanged = QtCore.pyqtSignal()
+    pointsChanged = QtCore.pyqtSignal()
 
     def __init__(
         self,
@@ -23,29 +21,31 @@ class RunRow(TeamGroup):
         self.widgets = [DataWidget(i, teams) for i in range(3)]
         for c, w in enumerate(self.widgets):
             grid.addWidget(w, row, col + c)
-            w.invalidChanged.connect(self.resultChanged)
-        self.setGroup([w.team for w in self.widgets])
+            w.invalidChanged.connect(self.updatePoints)
+            w.points.valueChanged.connect(self.pointsChanged)
+        self.setGroup([w.team for w in self.widgets])  # configure TeamGroup
+
+    def reset(self):
+        for w in self.widgets:
+            w.reset()
 
     def setEnabled(self, enable: bool):
         for w in self.widgets:
-            w.setEnabled(enable)
+            w.setEnabled(enable and w.team.currentText() != utils.no_team_str)
 
-    def result(self, team: str):
-        sortedResults = sorted(
-            [(w.name.currentText(), w.result()) for w in self.widgets if w.result() > 0],
-            key=lambda x: x[1],
-        )
-        if sortedResults == []:
-            return 0
-        order, _ = zip(*sortedResults)
-        if team not in order or team == "":
-            return 0
-        return 3 - order.index(team)
+    def updatePoints(self):
+        """recalculate points"""
+        sorted_times = sorted(enumerate([w.resultTime() for w in self.widgets]),
+                              key=lambda x: x[1] if x[1] > 0 else 888)
+        order, _ = zip(*sorted_times)
+        for i, w in enumerate(self.widgets):
+            w.points.setValue(3 - order.index(i) if w.resultTime() > 0 else 0)
 
 
 class Race:
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         self.teamsModel = QtCore.QStringListModel()
+        self.expected_runs = 0
         self.current_run = -1
 
         # Create top row's team comboboxes
@@ -54,20 +54,25 @@ class Race:
             team.col = i
             team.setModel(self.teamsModel)
             team.teamChanged.connect(lambda: self.configureRuns([t.currentText() for t in self.teams]))
+            team.teamChanged.connect(lambda col: self.setTrackEnabled(
+                col, self.teams[col].currentText() != utils.no_team_str))
 
         # Create widgets row-wise for each run
         self.run_rows = [RunRow(self.teamsModel, parent.gridLayout, 5 + i) for i in range(3)]
         for r in self.run_rows:
-            r.resultChanged.connect(self.updateResult)
+            r.pointsChanged.connect(self.updatePoints)
 
         # "Lauf x" widgets in first column
         self.run_widgets = [RunWidget(i) for i in range(3)]
         for i, w in enumerate(self.run_widgets):
             parent.gridLayout.addWidget(w, 5 + i, 0)
             w.activate.connect(self.setRun)
+            w.cancelled.connect(self.resetRun)
 
-        # total points widgets
+        # access to widgets: points, best_times, track labels
         self.points = [parent.findChild(QtWidgets.QSpinBox, f"points_{i+1}") for i in range(3)]
+        self.best_times = [parent.findChild(QtWidgets.QDoubleSpinBox, f"best_time_{i+1}") for i in range(3)]
+        self.track_labels = [parent.findChild(QtWidgets.QLabel, f"label_track{i+1}") for i in range(3)]
 
         try:
             self.comm = CanBusComm()
@@ -86,34 +91,48 @@ class Race:
             team_combo.setCurrentText(names[i])
 
         self.configureRuns(names[:3])  # configure all RunRows
-        self.setRun(-1)  # disable all runs
-        self.run_widgets[0].setEnabled(True)
 
     def configureRuns(self, names):
         """configure run rows based on team names"""
         assert len(names) == 3
         names = np.array(names)
         valid = names != utils.no_team_str
-        num_valid = np.count_nonzero(valid)
+        self.expected_runs = num_valid = np.count_nonzero(valid)
 
         for run in range(3):
             if run >= num_valid:
-                for i in range(3):
-                    self.run_rows[run][i].setCurrentIndex(-1)
+                for col in range(3):
+                    self.run_rows[run][col].setCurrentIndex(-1)
                 continue
 
             tracks = np.arange(3)  # initialize to 0 1 2
             # rotate valid tracks only, use +run to rotate in opposite direction
             rotate = np.mod(np.arange(num_valid) - run, num_valid)
             tracks[valid] = tracks[valid][rotate]  # assign new ordering
-            for i in range(3):
-                self.run_rows[run][i].setCurrentText(names[tracks[i]])
+            for col in range(3):
+                self.run_rows[run][col].setCurrentText(names[tracks[col]])
 
-    def updateResult(self, team: str):
-        indexes = [i for i, t in enumerate(self.teams.stringList()) if t == team]
-        result = sum(w.result(team) for w in self.run_rows)
-        for idx in indexes:
-            self.points[idx].setValue(result)
+        self.setRun(-1)  # disable all runs
+        self.run_widgets[0].setEnabled(True)
+
+    def setTrackEnabled(self, col: int, enabled: bool):
+        print("setTrackEnabled", col, enabled)
+        self.best_times[col].setEnabled(enabled)
+        self.points[col].setEnabled(enabled)
+        self.track_labels[col].setEnabled(enabled)
+
+    def resetRun(self, run):
+        self.run_rows[run].reset()
+
+    def updatePoints(self):
+        for c in range(3):
+            team = self.teams[c].currentText()
+            points = [row.widgets[row.index(team)].points.value() for row in self.run_rows[:self.expected_runs]]
+            self.points[c].setValue(sum(points))
+
+    def updateBestTime(self, team: str):
+        times = [row.widgets[row.index(team)].resultTime() for row in self.run_rows[:self.expected_runs]]
+        self.best_times[self.teams.index(team)].setValue(min([t for t in times if t > 0]))
 
     def setRun(self, run: int):
         # Enable/disable widgets
@@ -121,7 +140,11 @@ class Race:
             self.run_rows[i].setEnabled(i <= run)
             self.run_widgets[i].setEnabled(i <= run)
         self.current_run = run
-        if run >= 0:  # Prepare run
+
+        if run < 0:  # reset
+            for w in self.run_widgets:
+                w.on_cancelButton_clicked()
+        else:  # Prepare run
             # Block clock on unused tracks
             for i, team in enumerate(self.run_rows[run].teams):
                 self.comm.blockClock(i, team.currentText() == utils.no_team_str)
@@ -129,11 +152,28 @@ class Race:
             self.comm.setTextTracks([self.run_rows[run].teams[col].currentText() for col in range(3)])
 
     def onReceivedTime(self, track: int, seconds: float):
-        if self.current_run < 0 or self.run_rows[self.current_run].teams[track-1].currentText() == utils.no_team_str:
-            return
-        print(f"Bahn {track} ({self.run_rows[self.current_run].teams[track-1].currentText()}): {seconds:.2f}s")
-        self.run_rows[self.current_run].widgets[track-1].setTime(seconds)
+        try:
+            row = self.run_rows[self.current_run]
+            w = row.widgets[track-1]
+        except IndexError:
+            return  # invalid current_run
+        if w.team.currentText() == utils.no_team_str or w.invalid.isChecked():
+            return  # invalid team / track
 
+        print(f"Bahn {track} ({w.team.currentText()}): {seconds:.2f}s")
+        w.setTime(seconds)
+        row.updatePoints()
+        self.updateBestTime(w.team.currentText())
+
+        # Did we finish all expected runs?
+        if len([w for w in row.widgets if w.resultTime() > 0]) == self.expected_runs:
+           self.onRunFinished()
+
+    def onRunFinished(self):
+        if self.current_run+1 < self.expected_runs:
+            self.run_widgets[self.current_run+1].setEnabled(True)
+        else:  # all runs finished
+            pass
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
