@@ -9,6 +9,7 @@ from collections import OrderedDict
 
 class RunRow(TeamGroup):
     pointsChanged = QtCore.pyqtSignal()
+    invalidChanged = QtCore.pyqtSignal(str)  # team name
 
     def __init__(
         self,
@@ -22,6 +23,7 @@ class RunRow(TeamGroup):
         for c, w in enumerate(self.widgets):
             grid.addWidget(w, row, col + c)
             w.invalidChanged.connect(self.updatePoints)
+            w.invalidChanged.connect(lambda: self.invalidChanged.emit(self.sender().team.currentText()))
             w.points.valueChanged.connect(self.pointsChanged)
         self.setGroup([w.team for w in self.widgets])  # configure TeamGroup
 
@@ -61,6 +63,7 @@ class Race:
         self.run_rows = [RunRow(self.teamsModel, parent.gridLayout, 5 + i) for i in range(3)]
         for r in self.run_rows:
             r.pointsChanged.connect(self.updatePoints)
+            r.invalidChanged.connect(self.updateBestTime)
 
         # "Lauf x" widgets in first column
         self.run_widgets = [RunWidget(i) for i in range(3)]
@@ -131,8 +134,10 @@ class Race:
             self.points[c].setValue(sum(points))
 
     def updateBestTime(self, team: str):
-        times = [row.widgets[row.index(team)].resultTime() for row in self.run_rows[:self.expected_runs]]
-        self.best_times[self.teams.index(team)].setValue(min([t for t in times if t > 0]))
+        times = filter(lambda t: t > 0,
+                       [row.widgets[row.index(team)].resultTime() for row in self.run_rows[:self.expected_runs]])
+        times = list(times)
+        self.best_times[self.teams.index(team)].setValue(min(times) if times else 0)
 
     def setRun(self, run: int):
         # Enable/disable widgets
