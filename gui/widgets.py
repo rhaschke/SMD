@@ -66,6 +66,7 @@ class ScaledImageLabel(QtWidgets.QLabel):
 
 class TeamComboBox(QtWidgets.QComboBox):
     """ComboBox to select team name from. Backed by a Qt ItemModel. Provides a Completer"""
+
     teamChanged = QtCore.pyqtSignal(int, int)  # col, index
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
@@ -143,6 +144,7 @@ class TeamGroup(QObject):
 
 class RunWidget(QtWidgets.QWidget):
     """Meta widget used as header for run rows"""
+
     activate = QtCore.pyqtSignal(int)
     cancelled = QtCore.pyqtSignal(int)
 
@@ -150,7 +152,7 @@ class RunWidget(QtWidgets.QWidget):
         super().__init__(*args)
         uic.loadUi(utils.path(__file__, "run.ui"), self)
         self.id = id
-        self.num.setValue(id+1)
+        self.num.setValue(id + 1)
         self._setButtonsActivated(False)
 
     def _setButtonsActivated(self, activate):
@@ -158,7 +160,7 @@ class RunWidget(QtWidgets.QWidget):
         self.cancelButton.setEnabled(activate)
 
     def mouseDoubleClickEvent(self, event):
-        self.activate.emit(int(self.num.value())-1)
+        self.activate.emit(int(self.num.value()) - 1)
 
     @QtCore.pyqtSlot()
     def on_activateButton_clicked(self):

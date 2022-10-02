@@ -8,6 +8,7 @@ def sigint_handler(*args):
     print(" Quitting")
     QtWidgets.QApplication.quit()
 
+
 app = QtWidgets.QApplication(sys.argv)
 
 main = MainWindow()

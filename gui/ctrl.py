@@ -23,7 +23,9 @@ class RunRow(TeamGroup):
         for c, w in enumerate(self.widgets):
             grid.addWidget(w, row, col + c)
             w.invalidChanged.connect(self.updatePoints)
-            w.invalidChanged.connect(lambda: self.invalidChanged.emit(self.sender().team.currentText()))
+            w.invalidChanged.connect(
+                lambda: self.invalidChanged.emit(self.sender().team.currentText())
+            )
             w.points.valueChanged.connect(self.pointsChanged)
         self.setGroup([w.team for w in self.widgets])  # configure TeamGroup
 
@@ -37,8 +39,10 @@ class RunRow(TeamGroup):
 
     def updatePoints(self):
         """recalculate points"""
-        sorted_times = sorted(enumerate([w.resultTime() for w in self.widgets]),
-                              key=lambda x: x[1] if x[1] > 0 else 888)
+        sorted_times = sorted(
+            enumerate([w.resultTime() for w in self.widgets]),
+            key=lambda x: x[1] if x[1] > 0 else 888,
+        )
         order, _ = zip(*sorted_times)
         for i, w in enumerate(self.widgets):
             w.points.setValue(3 - order.index(i) if w.resultTime() > 0 else 0)
@@ -51,13 +55,20 @@ class Race:
         self.current_run = -1
 
         # Create top row's team comboboxes
-        self.teams = TeamGroup([parent.findChild(TeamComboBox, f"team_combobox_{i+1}") for i in range(3)])
+        self.teams = TeamGroup(
+            [parent.findChild(TeamComboBox, f"team_combobox_{i+1}") for i in range(3)]
+        )
         for i, team in enumerate(self.teams):
             team.col = i
             team.setModel(self.teamsModel)
-            team.teamChanged.connect(lambda: self.configureRuns([t.currentText() for t in self.teams]))
-            team.teamChanged.connect(lambda col: self.setTrackEnabled(
-                col, self.teams[col].currentText() != utils.no_team_str))
+            team.teamChanged.connect(
+                lambda: self.configureRuns([t.currentText() for t in self.teams])
+            )
+            team.teamChanged.connect(
+                lambda col: self.setTrackEnabled(
+                    col, self.teams[col].currentText() != utils.no_team_str
+                )
+            )
 
         # Create widgets row-wise for each run
         self.run_rows = [RunRow(self.teamsModel, parent.gridLayout, 5 + i) for i in range(3)]
@@ -73,9 +84,15 @@ class Race:
             w.cancelled.connect(self.resetRun)
 
         # access to widgets: points, best_times, track labels
-        self.points = [parent.findChild(QtWidgets.QSpinBox, f"points_{i+1}") for i in range(3)]
-        self.best_times = [parent.findChild(QtWidgets.QDoubleSpinBox, f"best_time_{i+1}") for i in range(3)]
-        self.track_labels = [parent.findChild(QtWidgets.QLabel, f"label_track{i+1}") for i in range(3)]
+        self.points = [
+            parent.findChild(QtWidgets.QSpinBox, f"points_{i+1}") for i in range(3)
+        ]
+        self.best_times = [
+            parent.findChild(QtWidgets.QDoubleSpinBox, f"best_time_{i+1}") for i in range(3)
+        ]
+        self.track_labels = [
+            parent.findChild(QtWidgets.QLabel, f"label_track{i+1}") for i in range(3)
+        ]
 
         try:
             self.comm = CanBusComm()
@@ -130,12 +147,20 @@ class Race:
     def updatePoints(self):
         for c in range(3):
             team = self.teams[c].currentText()
-            points = [row.widgets[row.index(team)].points.value() for row in self.run_rows[:self.expected_runs]]
+            points = [
+                row.widgets[row.index(team)].points.value()
+                for row in self.run_rows[: self.expected_runs]
+            ]
             self.points[c].setValue(sum(points))
 
     def updateBestTime(self, team: str):
-        times = filter(lambda t: t > 0,
-                       [row.widgets[row.index(team)].resultTime() for row in self.run_rows[:self.expected_runs]])
+        times = filter(
+            lambda t: t > 0,
+            [
+                row.widgets[row.index(team)].resultTime()
+                for row in self.run_rows[: self.expected_runs]
+            ],
+        )
         times = list(times)
         self.best_times[self.teams.index(team)].setValue(min(times) if times else 0)
 
@@ -154,12 +179,14 @@ class Race:
             for i, team in enumerate(self.run_rows[run].teams):
                 self.comm.blockClock(i, team.currentText() == utils.no_team_str)
             # Send team names to display
-            self.comm.setTextTracks([self.run_rows[run].teams[col].currentText() for col in range(3)])
+            self.comm.setTextTracks(
+                [self.run_rows[run].teams[col].currentText() for col in range(3)]
+            )
 
     def onReceivedTime(self, track: int, seconds: float):
         try:
             row = self.run_rows[self.current_run]
-            w = row.widgets[track-1]
+            w = row.widgets[track - 1]
         except IndexError:
             return  # invalid current_run
         if w.team.currentText() == utils.no_team_str or w.invalid.isChecked():
@@ -172,13 +199,14 @@ class Race:
 
         # Did we finish all expected runs?
         if len([w for w in row.widgets if w.resultTime() > 0]) == self.expected_runs:
-           self.onRunFinished()
+            self.onRunFinished()
 
     def onRunFinished(self):
-        if self.current_run+1 < self.expected_runs:
-            self.run_widgets[self.current_run+1].setEnabled(True)
+        if self.current_run + 1 < self.expected_runs:
+            self.run_widgets[self.current_run + 1].setEnabled(True)
         else:  # all runs finished
             pass
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
@@ -201,7 +229,11 @@ class MainWindow(QtWidgets.QMainWindow):
     # Fetch next race (TODO: from database)
     def nextRace(self):
         import random
-        names = [f"{self.race_class_combo.currentText()}{i+1:02d}" for i in random.sample(range(25), 3)]
+
+        names = [
+            f"{self.race_class_combo.currentText()}{i+1:02d}"
+            for i in random.sample(range(25), 3)
+        ]
         try:
             names[random.randint(0, 3)] = "---"
         except IndexError:
